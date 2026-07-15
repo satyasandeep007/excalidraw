@@ -20,94 +20,62 @@ import {
 
 type ElementSize = { width: number; height: number };
 
-// Small icon set drawn specifically for this palette: each one is a
-// miniature of the actual shape it drops onto the canvas (a monitor for
-// Client, a cylinder for Postgres, a frame for the Kafka container, etc.)
-// instead of borrowing Excalidraw's generic rectangle/circle tool icons,
-// which carried no relation to what each button actually inserts.
+// Each button's icon is a literal miniature of the shape it places: same
+// silhouette (wide box, tall box, ellipse, dashed container), same fill and
+// stroke color. Glancing at the toolbar shows exactly what you'll get,
+// rather than an abstract symbol you have to learn to associate with it.
 const paletteIconProps = {
   width: 24,
   height: 24,
   viewBox: "0 0 24 24",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: 1.6,
-  strokeLinecap: "round" as const,
-  strokeLinejoin: "round" as const,
 };
 
-const ClientIcon = (
-  <svg {...paletteIconProps}>
-    <rect x="3" y="4" width="18" height="12" rx="1.5" />
-    <path d="M8 20h8M12 16v4" />
-  </svg>
-);
+type ShapePreviewKind = "wide" | "tall" | "note" | "ellipse" | "container";
 
-const ServiceIcon = (
-  <svg {...paletteIconProps}>
-    <path d="M12 2.5l8 4.4v10.2l-8 4.4-8-4.4V6.9z" />
-  </svg>
-);
+const SHAPE_PREVIEW_GEOMETRY: Record<
+  Exclude<ShapePreviewKind, "ellipse" | "container">,
+  { x: number; y: number; width: number; height: number }
+> = {
+  wide: { x: 2, y: 6, width: 20, height: 12 },
+  tall: { x: 6, y: 2, width: 12, height: 20 },
+  note: { x: 2, y: 7, width: 20, height: 10 },
+};
 
-const InfraIcon = (
-  <svg {...paletteIconProps}>
-    <circle cx="12" cy="12" r="8.5" />
-    <path d="M12 7.5V12l3.2 2" />
-  </svg>
-);
+const shapePreviewIcon = (
+  kind: ShapePreviewKind,
+  backgroundColor: string,
+  strokeColor: string,
+) => {
+  if (kind === "ellipse") {
+    return (
+      <svg {...paletteIconProps} fill={backgroundColor} stroke={strokeColor}>
+        <ellipse cx="12" cy="12" rx="9" ry="6.5" strokeWidth="1.6" />
+      </svg>
+    );
+  }
 
-const PostgresIcon = (
-  <svg {...paletteIconProps}>
-    <ellipse cx="12" cy="6" rx="7.5" ry="3" />
-    <path d="M4.5 6v12a7.5 3 0 0 0 15 0V6" />
-  </svg>
-);
+  if (kind === "container") {
+    return (
+      <svg {...paletteIconProps} fill="none" stroke={strokeColor}>
+        <rect
+          x="2"
+          y="2"
+          width="20"
+          height="20"
+          rx="2"
+          strokeWidth="1.6"
+          strokeDasharray="3 2.5"
+        />
+      </svg>
+    );
+  }
 
-const RedisIcon = (
-  <svg {...paletteIconProps}>
-    <path
-      d="M13 2.5L4.8 13.5h5.6l-1 8 8.2-11h-5.6z"
-      fill="currentColor"
-      stroke="none"
-    />
-  </svg>
-);
-
-const ApiGatewayIcon = (
-  <svg {...paletteIconProps}>
-    <rect x="2.5" y="7" width="3" height="10" rx="1" />
-    <rect x="18.5" y="7" width="3" height="10" rx="1" />
-    <path d="M6 12h12" />
-    <path d="M14 8.5L18 12l-4 3.5" />
-  </svg>
-);
-
-const NoteIcon = (
-  <svg {...paletteIconProps}>
-    <rect x="3.5" y="3.5" width="17" height="17" rx="1.5" />
-    <path d="M7 8.5h10M7 12h10M7 15.5h6" />
-  </svg>
-);
-
-const KafkaIcon = (
-  <svg {...paletteIconProps}>
-    <path d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4" />
-  </svg>
-);
-
-const StateMachineIcon = (
-  <svg {...paletteIconProps}>
-    <circle cx="6" cy="12" r="3" />
-    <circle cx="18" cy="12" r="3" />
-    <path d="M9 12h6M12.5 9.5L15 12l-2.5 2.5" />
-  </svg>
-);
-
-const SystemIcon = (
-  <svg {...paletteIconProps}>
-    <circle cx="12" cy="12" r="8.5" />
-  </svg>
-);
+  return (
+    <svg {...paletteIconProps} fill={backgroundColor} stroke={strokeColor}>
+      <rect {...SHAPE_PREVIEW_GEOMETRY[kind]} rx="3" strokeWidth="1.6" />
+    </svg>
+  );
+};
 
 type PaletteItem = {
   id: string;
@@ -406,7 +374,7 @@ export const SystemDesignPalette = () => {
         id: "client",
         label: "Client",
         shortcut: "1",
-        icon: ClientIcon,
+        icon: shapePreviewIcon("wide", "#a5d8ff", "#1971c2"),
         insert: (x, y, size) =>
           makeLabeledRect(x, y, "Client", {
             backgroundColor: "#a5d8ff",
@@ -419,7 +387,7 @@ export const SystemDesignPalette = () => {
         id: "service",
         label: "Service",
         shortcut: "2",
-        icon: ServiceIcon,
+        icon: shapePreviewIcon("wide", "#ffc9c9", "#e03131"),
         insert: (x, y, size) =>
           makeLabeledRect(x, y, "Service", {
             backgroundColor: "#ffc9c9",
@@ -432,7 +400,7 @@ export const SystemDesignPalette = () => {
         id: "infra",
         label: "Infra / Cron",
         shortcut: "3",
-        icon: InfraIcon,
+        icon: shapePreviewIcon("wide", "#ffec99", "#f08c00"),
         insert: (x, y, size) =>
           makeLabeledRect(x, y, "Infra / Cron", {
             backgroundColor: "#ffec99",
@@ -446,7 +414,7 @@ export const SystemDesignPalette = () => {
         id: "postgres",
         label: "Postgres",
         shortcut: "4",
-        icon: PostgresIcon,
+        icon: shapePreviewIcon("ellipse", "#b2f2bb", "#2f9e44"),
         insert: (x, y, size) =>
           makeLabeledEllipse(x, y, "Postgres", {
             backgroundColor: "#b2f2bb",
@@ -458,7 +426,7 @@ export const SystemDesignPalette = () => {
         id: "redis",
         label: "Redis",
         shortcut: "5",
-        icon: RedisIcon,
+        icon: shapePreviewIcon("ellipse", "#99e9f2", "#0c8599"),
         insert: (x, y, size) =>
           makeLabeledEllipse(x, y, "Redis", {
             backgroundColor: "#99e9f2",
@@ -472,7 +440,7 @@ export const SystemDesignPalette = () => {
         id: "api-gateway",
         label: "API Gateway",
         shortcut: "6",
-        icon: ApiGatewayIcon,
+        icon: shapePreviewIcon("wide", "#ffc9c9", "#e03131"),
         insert: (x, y, size) =>
           makeLabeledRect(x, y, "API Gateway", {
             backgroundColor: "#ffc9c9",
@@ -486,7 +454,7 @@ export const SystemDesignPalette = () => {
         id: "note",
         label: "Notes",
         shortcut: "7",
-        icon: NoteIcon,
+        icon: shapePreviewIcon("note", "#fff9db", "#868e96"),
         insert: (x, y, size) =>
           makeLabeledRect(x, y, "Notes", {
             backgroundColor: "#fff9db",
@@ -499,14 +467,14 @@ export const SystemDesignPalette = () => {
         id: "kafka",
         label: "Kafka",
         shortcut: "8",
-        icon: KafkaIcon,
+        icon: shapePreviewIcon("container", "transparent", "#868e96"),
         insert: (x, y, size) => makeContainer(x, y, "KAFKA", size),
       },
       {
         id: "state-machine",
         label: "State Machine",
         shortcut: "9",
-        icon: StateMachineIcon,
+        icon: shapePreviewIcon("tall", "#ffec99", "#f08c00"),
         insert: (x, y, size) =>
           makeLabeledRect(x, y, "State Machine", {
             backgroundColor: "#ffec99",
@@ -520,7 +488,7 @@ export const SystemDesignPalette = () => {
         id: "system",
         label: "System",
         shortcut: "0",
-        icon: SystemIcon,
+        icon: shapePreviewIcon("ellipse", "#ffec99", "#f08c00"),
         insert: (x, y, size) =>
           makeLabeledEllipse(x, y, "System", {
             backgroundColor: "#ffec99",
