@@ -7,8 +7,10 @@ import {
   DiamondIcon,
   EllipseIcon,
   LibraryIcon,
+  LockedIcon,
   RectangleIcon,
   TextIcon,
+  UnlockedIcon,
 } from "@excalidraw/excalidraw/components/icons";
 
 type PaletteItem = {
@@ -26,6 +28,7 @@ export const SystemDesignPalette = () => {
   const excalidrawAPI = useExcalidrawAPI();
   const rootRef = useRef<HTMLDivElement>(null);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
+  const [isLocked, setIsLocked] = useState(false);
 
   const insertElements = useCallback(
     (elementsFactory: () => any[]) => {
@@ -414,7 +417,11 @@ export const SystemDesignPalette = () => {
         return;
       }
 
-      if (rootRef.current?.contains(event.target as Node)) {
+      // Only place a shape when the click actually lands on the drawing
+      // canvas. Anything else (top toolbar, side panels, our own sidebar,
+      // dialogs, etc.) should behave like a normal UI click.
+      const target = event.target as HTMLElement;
+      if (!target.closest?.(".excalidraw__canvas")) {
         return;
       }
 
@@ -422,6 +429,13 @@ export const SystemDesignPalette = () => {
       const x = event.clientX - appState.offsetLeft - appState.scrollX;
       const y = event.clientY - appState.offsetTop - appState.scrollY;
       activeInsert(x, y);
+
+      // Single-shot by default, mirroring Excalidraw's own shape tools:
+      // place one element, then fall back to the selection tool. Locking
+      // keeps the tool armed for stamping multiple copies in a row.
+      if (!isLocked) {
+        setActiveItemId(null);
+      }
     };
 
     const onKeyDown = (event: KeyboardEvent) => {
@@ -437,7 +451,7 @@ export const SystemDesignPalette = () => {
       window.removeEventListener("pointerdown", onPointerDown);
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [activeItemId, excalidrawAPI, items]);
+  }, [activeItemId, excalidrawAPI, isLocked, items]);
 
   return (
     <div
@@ -445,7 +459,25 @@ export const SystemDesignPalette = () => {
       className="system-design-toolbar"
       aria-label="System design toolbar"
     >
-      <div className="system-design-toolbar__header">SD</div>
+      <div className="system-design-toolbar__header">
+        <span>SD</span>
+        <button
+          className={`system-design-toolbar__lock${
+            isLocked ? " system-design-toolbar__lock--active" : ""
+          }`}
+          onClick={() => setIsLocked((current) => !current)}
+          type="button"
+          title={
+            isLocked
+              ? "Tool stays active after placing (click to disable)"
+              : "Tool deactivates after placing (click to keep it active)"
+          }
+          aria-label="Keep tool active after placing a shape"
+          aria-pressed={isLocked}
+        >
+          {isLocked ? LockedIcon : UnlockedIcon}
+        </button>
+      </div>
       <div className="system-design-toolbar__items">
         {items.map((item) => (
           <button
