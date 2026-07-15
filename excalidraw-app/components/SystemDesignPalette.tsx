@@ -21,8 +21,8 @@ import {
 type ElementSize = { width: number; height: number };
 
 // Small icon set drawn specifically for this palette: each one is a
-// miniature of the actual shape it drops onto the canvas (a gate for API
-// Gateway, a fan-out for Load Balancer, a cylinder for Database, etc.)
+// miniature of the actual shape it drops onto the canvas (a monitor for
+// Client, a cylinder for Postgres, a frame for the Kafka container, etc.)
 // instead of borrowing Excalidraw's generic rectangle/circle tool icons,
 // which carried no relation to what each button actually inserts.
 const paletteIconProps = {
@@ -36,22 +36,10 @@ const paletteIconProps = {
   strokeLinejoin: "round" as const,
 };
 
-const ApiGatewayIcon = (
+const ClientIcon = (
   <svg {...paletteIconProps}>
-    <rect x="2.5" y="7" width="3" height="10" rx="1" />
-    <rect x="18.5" y="7" width="3" height="10" rx="1" />
-    <path d="M6 12h12" />
-    <path d="M14 8.5L18 12l-4 3.5" />
-  </svg>
-);
-
-const LoadBalancerIcon = (
-  <svg {...paletteIconProps}>
-    <circle cx="12" cy="4.8" r="2.1" />
-    <circle cx="4.8" cy="19.2" r="2.1" />
-    <circle cx="12" cy="19.2" r="2.1" />
-    <circle cx="19.2" cy="19.2" r="2.1" />
-    <path d="M12 7v10M12 7L4.8 17.2M12 7l7.2 10.2" />
+    <rect x="3" y="4" width="18" height="12" rx="1.5" />
+    <path d="M8 20h8M12 16v4" />
   </svg>
 );
 
@@ -61,37 +49,21 @@ const ServiceIcon = (
   </svg>
 );
 
-const WorkerIcon = (
+const InfraIcon = (
   <svg {...paletteIconProps}>
-    <circle cx="12" cy="12" r="3.1" />
-    <path d="M12 3v2.4M12 18.6V21M21 12h-2.4M5.4 12H3M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2L5.5 5.5" />
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M12 7.5V12l3.2 2" />
   </svg>
 );
 
-const QueueIcon = (
-  <svg {...paletteIconProps}>
-    <rect x="1.8" y="8" width="4.4" height="8" rx="1" />
-    <rect x="9.8" y="8" width="4.4" height="8" rx="1" />
-    <rect x="17.8" y="8" width="4.4" height="8" rx="1" />
-  </svg>
-);
-
-const TopicIcon = (
-  <svg {...paletteIconProps}>
-    <circle cx="12" cy="18.2" r="1.5" fill="currentColor" stroke="none" />
-    <path d="M8.4 14.6a5.2 5.2 0 0 1 7.2 0" />
-    <path d="M5.2 11.4a9.6 9.6 0 0 1 13.6 0" />
-  </svg>
-);
-
-const DatabaseIcon = (
+const PostgresIcon = (
   <svg {...paletteIconProps}>
     <ellipse cx="12" cy="6" rx="7.5" ry="3" />
     <path d="M4.5 6v12a7.5 3 0 0 0 15 0V6" />
   </svg>
 );
 
-const CacheIcon = (
+const RedisIcon = (
   <svg {...paletteIconProps}>
     <path
       d="M13 2.5L4.8 13.5h5.6l-1 8 8.2-11h-5.6z"
@@ -101,17 +73,39 @@ const CacheIcon = (
   </svg>
 );
 
-const ProducerIcon = (
+const ApiGatewayIcon = (
   <svg {...paletteIconProps}>
-    <circle cx="6.6" cy="12" r="4" />
-    <path d="M12.6 12h5.6M15.6 8.6l3.4 3.4-3.4 3.4" />
+    <rect x="2.5" y="7" width="3" height="10" rx="1" />
+    <rect x="18.5" y="7" width="3" height="10" rx="1" />
+    <path d="M6 12h12" />
+    <path d="M14 8.5L18 12l-4 3.5" />
   </svg>
 );
 
-const ConsumerIcon = (
+const NoteIcon = (
   <svg {...paletteIconProps}>
-    <circle cx="17.4" cy="12" r="4" />
-    <path d="M11.4 12H5.8M8.8 8.6L5.4 12l3.4 3.4" />
+    <rect x="3.5" y="3.5" width="17" height="17" rx="1.5" />
+    <path d="M7 8.5h10M7 12h10M7 15.5h6" />
+  </svg>
+);
+
+const KafkaIcon = (
+  <svg {...paletteIconProps}>
+    <path d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4" />
+  </svg>
+);
+
+const StateMachineIcon = (
+  <svg {...paletteIconProps}>
+    <circle cx="6" cy="12" r="3" />
+    <circle cx="18" cy="12" r="3" />
+    <path d="M9 12h6M12.5 9.5L15 12l-2.5 2.5" />
+  </svg>
+);
+
+const SystemIcon = (
+  <svg {...paletteIconProps}>
+    <circle cx="12" cy="12" r="8.5" />
   </svg>
 );
 
@@ -217,8 +211,10 @@ export const SystemDesignPalette = () => {
         width?: number;
         height?: number;
         backgroundColor: string;
+        strokeColor?: string;
         roundness?: { type: 2 } | null;
         fillStyle?: "hachure" | "cross-hatch" | "solid" | "zigzag";
+        caption?: string;
       },
     ) => {
       insertElements(() => {
@@ -226,6 +222,7 @@ export const SystemDesignPalette = () => {
         const height = opts.height ?? 84;
         const groupId = randomId();
         const origin = { x: x - width / 2, y: y - height / 2 };
+        const strokeColor = opts.strokeColor ?? STROKE;
 
         const container = newElement({
           type: "rectangle",
@@ -233,7 +230,7 @@ export const SystemDesignPalette = () => {
           y: origin.y,
           width,
           height,
-          strokeColor: STROKE,
+          strokeColor,
           backgroundColor: opts.backgroundColor,
           fillStyle: opts.fillStyle ?? "hachure",
           strokeWidth: 2,
@@ -256,7 +253,26 @@ export const SystemDesignPalette = () => {
           groupIds: [groupId],
         });
 
-        return [container, text];
+        const elements = [container, text];
+
+        if (opts.caption) {
+          elements.push(
+            newTextElement({
+              x,
+              y: origin.y + height + 10,
+              text: opts.caption,
+              fontSize: 14,
+              fontFamily: DEFAULT_FONT_FAMILY,
+              strokeColor: "#495057",
+              backgroundColor: "transparent",
+              textAlign: "center",
+              verticalAlign: "top",
+              groupIds: [groupId],
+            }),
+          );
+        }
+
+        return elements;
       });
     },
     [insertElements],
@@ -267,14 +283,20 @@ export const SystemDesignPalette = () => {
       x: number,
       y: number,
       label: string,
-      backgroundColor: string,
-      size?: ElementSize,
+      opts: {
+        backgroundColor: string;
+        strokeColor?: string;
+        fillStyle?: "hachure" | "cross-hatch" | "solid" | "zigzag";
+        caption?: string;
+        size?: ElementSize;
+      },
     ) => {
       insertElements(() => {
-        const width = size?.width ?? 180;
-        const height = size?.height ?? 180;
+        const width = opts.size?.width ?? 160;
+        const height = opts.size?.height ?? 110;
         const groupId = randomId();
         const origin = { x: x - width / 2, y: y - height / 2 };
+        const strokeColor = opts.strokeColor ?? STROKE;
 
         const container = newElement({
           type: "ellipse",
@@ -282,9 +304,9 @@ export const SystemDesignPalette = () => {
           y: origin.y,
           width,
           height,
-          strokeColor: STROKE,
-          backgroundColor,
-          fillStyle: "hachure",
+          strokeColor,
+          backgroundColor: opts.backgroundColor,
+          fillStyle: opts.fillStyle ?? "hachure",
           strokeWidth: 2,
           roughness: 1,
           groupIds: [groupId],
@@ -307,155 +329,72 @@ export const SystemDesignPalette = () => {
           groupIds: [groupId],
         });
 
-        return [container, text];
+        const elements = [container, text];
+
+        if (opts.caption) {
+          elements.push(
+            newTextElement({
+              x,
+              y: origin.y + height + 10,
+              text: opts.caption,
+              fontSize: 14,
+              fontFamily: DEFAULT_FONT_FAMILY,
+              strokeColor: "#495057",
+              backgroundColor: "transparent",
+              textAlign: "center",
+              verticalAlign: "top",
+              groupIds: [groupId],
+            }),
+          );
+        }
+
+        return elements;
       });
     },
     [insertElements],
   );
 
-  const makeQueue = useCallback(
-    (x: number, y: number) => {
+  // A large bounding box with a small top-left label, matching the "KAFKA"
+  // grouping box used to visually cluster producer/consumer/topic shapes.
+  // It's a plain rectangle rather than an Excalidraw frame, so it doesn't
+  // auto-capture or clip whatever gets placed on top of it.
+  const makeContainer = useCallback(
+    (x: number, y: number, label: string, size?: ElementSize) => {
       insertElements(() => {
-        const width = 320;
-        const height = 96;
+        const width = size?.width ?? 480;
+        const height = size?.height ?? 360;
         const groupId = randomId();
         const origin = { x: x - width / 2, y: y - height / 2 };
 
-        const outer = newElement({
+        const container = newElement({
           type: "rectangle",
           x: origin.x,
           y: origin.y,
           width,
           height,
-          strokeColor: "#e67700",
-          backgroundColor: "#ffe8cc",
-          fillStyle: "hachure",
-          strokeWidth: 2,
+          strokeColor: "#868e96",
+          backgroundColor: "transparent",
+          fillStyle: "solid",
+          strokeWidth: 1.5,
           roughness: 1,
           roundness: { type: 2 },
           groupIds: [groupId],
         });
 
-        const item1 = newElement({
-          type: "rectangle",
-          x: origin.x + 24,
-          y: origin.y + 22,
-          width: 52,
-          height: 52,
-          strokeColor: "#e67700",
-          backgroundColor: "#fff3bf",
-          fillStyle: "cross-hatch",
-          strokeWidth: 2,
-          roughness: 1,
-          groupIds: [groupId],
-        });
-        const item2 = newElement({
-          type: "rectangle",
-          x: origin.x + 96,
-          y: origin.y + 22,
-          width: 52,
-          height: 52,
-          strokeColor: "#e67700",
-          backgroundColor: "#fff3bf",
-          fillStyle: "cross-hatch",
-          strokeWidth: 2,
-          roughness: 1,
-          groupIds: [groupId],
-        });
-        const item3 = newElement({
-          type: "rectangle",
-          x: origin.x + 248,
-          y: origin.y + 22,
-          width: 52,
-          height: 52,
-          strokeColor: "#e67700",
-          backgroundColor: "#fff3bf",
-          fillStyle: "cross-hatch",
-          strokeWidth: 2,
-          roughness: 1,
-          groupIds: [groupId],
-        });
-
-        const label = newTextElement({
-          x,
-          y: origin.y + height + 28,
-          text: "Message Queue",
-          fontSize: 20,
-          strokeColor: STROKE,
-          backgroundColor: "transparent",
-          textAlign: "center",
-          verticalAlign: "middle",
-          groupIds: [groupId],
-        });
-
-        return [outer, item1, item2, item3, label];
-      });
-    },
-    [insertElements],
-  );
-
-  const makeDatabase = useCallback(
-    (x: number, y: number) => {
-      insertElements(() => {
-        const width = 170;
-        const bodyHeight = 110;
-        const topHeight = 38;
-        const groupId = randomId();
-        const totalHeight = bodyHeight + topHeight;
-        const origin = { x: x - width / 2, y: y - totalHeight / 2 };
-
-        const top = newElement({
-          type: "ellipse",
-          x: origin.x,
-          y: origin.y,
-          width,
-          height: topHeight,
-          strokeColor: "#2b8a3e",
-          backgroundColor: "#d3f9d8",
-          fillStyle: "hachure",
-          strokeWidth: 2,
-          roughness: 1,
-          groupIds: [groupId],
-        });
-        const body = newElement({
-          type: "rectangle",
-          x: origin.x,
-          y: origin.y + topHeight / 2,
-          width,
-          height: bodyHeight,
-          strokeColor: "#2b8a3e",
-          backgroundColor: "#d3f9d8",
-          fillStyle: "hachure",
-          strokeWidth: 2,
-          roughness: 1,
-          groupIds: [groupId],
-        });
-        const bottom = newElement({
-          type: "ellipse",
-          x: origin.x,
-          y: origin.y + bodyHeight,
-          width,
-          height: topHeight,
-          strokeColor: "#2b8a3e",
-          backgroundColor: "#d3f9d8",
-          fillStyle: "hachure",
-          strokeWidth: 2,
-          roughness: 1,
-          groupIds: [groupId],
-        });
         const text = newTextElement({
-          x,
-          y: origin.y + bodyHeight / 2 + 18,
-          text: "DB",
-          fontSize: 28,
-          strokeColor: STROKE,
+          x: origin.x + 14,
+          y: origin.y + 10,
+          text: label,
+          fontSize: 14,
+          fontFamily: DEFAULT_FONT_FAMILY,
+          strokeColor: "#868e96",
           backgroundColor: "transparent",
-          textAlign: "center",
-          verticalAlign: "middle",
+          textAlign: "left",
+          verticalAlign: "top",
           groupIds: [groupId],
         });
 
-        return [body, top, bottom, text];
+        return [container, text];
       });
     },
     [insertElements],
@@ -464,25 +403,14 @@ export const SystemDesignPalette = () => {
   const items: PaletteItem[] = useMemo(
     () => [
       {
-        id: "api-gateway",
-        label: "API Gateway",
+        id: "client",
+        label: "Client",
         shortcut: "1",
-        icon: ApiGatewayIcon,
+        icon: ClientIcon,
         insert: (x, y, size) =>
-          makeLabeledRect(x, y, "API Gateway", {
-            backgroundColor: "#d0ebff",
-            width: size?.width,
-            height: size?.height,
-          }),
-      },
-      {
-        id: "load-balancer",
-        label: "Load Balancer",
-        shortcut: "2",
-        icon: LoadBalancerIcon,
-        insert: (x, y, size) =>
-          makeLabeledRect(x, y, "Load Balancer", {
-            backgroundColor: "#ffe8cc",
+          makeLabeledRect(x, y, "Client", {
+            backgroundColor: "#a5d8ff",
+            strokeColor: "#1971c2",
             width: size?.width,
             height: size?.height,
           }),
@@ -490,79 +418,119 @@ export const SystemDesignPalette = () => {
       {
         id: "service",
         label: "Service",
-        shortcut: "3",
+        shortcut: "2",
         icon: ServiceIcon,
         insert: (x, y, size) =>
           makeLabeledRect(x, y, "Service", {
-            backgroundColor: "#d3f9d8",
+            backgroundColor: "#ffc9c9",
+            strokeColor: "#e03131",
             width: size?.width,
             height: size?.height,
           }),
       },
       {
-        id: "worker",
-        label: "Worker",
+        id: "infra",
+        label: "Infra / Cron",
+        shortcut: "3",
+        icon: InfraIcon,
+        insert: (x, y, size) =>
+          makeLabeledRect(x, y, "Infra / Cron", {
+            backgroundColor: "#ffec99",
+            strokeColor: "#f08c00",
+            fillStyle: "solid",
+            width: size?.width,
+            height: size?.height,
+          }),
+      },
+      {
+        id: "postgres",
+        label: "Postgres",
         shortcut: "4",
-        icon: WorkerIcon,
+        icon: PostgresIcon,
         insert: (x, y, size) =>
-          makeLabeledRect(x, y, "Worker", {
-            backgroundColor: "#f3d9fa",
-            width: size?.width,
-            height: size?.height,
+          makeLabeledEllipse(x, y, "Postgres", {
+            backgroundColor: "#b2f2bb",
+            strokeColor: "#2f9e44",
+            size,
           }),
       },
       {
-        id: "queue",
-        label: "Message Queue",
+        id: "redis",
+        label: "Redis",
         shortcut: "5",
-        icon: QueueIcon,
-        insert: (x, y) => makeQueue(x, y),
-      },
-      {
-        id: "topic",
-        label: "Topic",
-        shortcut: "6",
-        icon: TopicIcon,
+        icon: RedisIcon,
         insert: (x, y, size) =>
-          makeLabeledEllipse(x, y, "Topic", "#fff3bf", size),
-      },
-      {
-        id: "db",
-        label: "Database",
-        shortcut: "7",
-        icon: DatabaseIcon,
-        insert: (x, y) => makeDatabase(x, y),
-      },
-      {
-        id: "cache",
-        label: "Cache",
-        shortcut: "8",
-        icon: CacheIcon,
-        insert: (x, y, size) =>
-          makeLabeledRect(x, y, "Cache", {
-            backgroundColor: "#e5dbff",
-            width: size?.width,
-            height: size?.height,
+          makeLabeledEllipse(x, y, "Redis", {
+            backgroundColor: "#99e9f2",
+            strokeColor: "#0c8599",
+            fillStyle: "solid",
+            caption: "Cache",
+            size,
           }),
       },
       {
-        id: "producer",
-        label: "Producer",
-        shortcut: "9",
-        icon: ProducerIcon,
+        id: "api-gateway",
+        label: "API Gateway",
+        shortcut: "6",
+        icon: ApiGatewayIcon,
         insert: (x, y, size) =>
-          makeLabeledEllipse(x, y, "Producer", "#ffc9c9", size),
+          makeLabeledRect(x, y, "API Gateway", {
+            backgroundColor: "#ffc9c9",
+            strokeColor: "#e03131",
+            caption: "Auth + Rate Limiter",
+            width: size?.width ?? 100,
+            height: size?.height ?? 200,
+          }),
       },
       {
-        id: "consumer",
-        label: "Consumer",
-        shortcut: "0",
-        icon: ConsumerIcon,
+        id: "note",
+        label: "Notes",
+        shortcut: "7",
+        icon: NoteIcon,
         insert: (x, y, size) =>
-          makeLabeledEllipse(x, y, "Consumer", "#d8f5a2", size),
+          makeLabeledRect(x, y, "Notes", {
+            backgroundColor: "#fff9db",
+            strokeColor: "#868e96",
+            width: size?.width ?? 240,
+            height: size?.height ?? 120,
+          }),
+      },
+      {
+        id: "kafka",
+        label: "Kafka",
+        shortcut: "8",
+        icon: KafkaIcon,
+        insert: (x, y, size) => makeContainer(x, y, "KAFKA", size),
+      },
+      {
+        id: "state-machine",
+        label: "State Machine",
+        shortcut: "9",
+        icon: StateMachineIcon,
+        insert: (x, y, size) =>
+          makeLabeledRect(x, y, "State Machine", {
+            backgroundColor: "#ffec99",
+            strokeColor: "#f08c00",
+            fillStyle: "solid",
+            width: size?.width ?? 220,
+            height: size?.height ?? 260,
+          }),
+      },
+      {
+        id: "system",
+        label: "System",
+        shortcut: "0",
+        icon: SystemIcon,
+        insert: (x, y, size) =>
+          makeLabeledEllipse(x, y, "System", {
+            backgroundColor: "#ffec99",
+            strokeColor: "#f08c00",
+            fillStyle: "solid",
+            size,
+          }),
       },
     ],
-    [makeDatabase, makeLabeledEllipse, makeLabeledRect, makeQueue],
+    [makeContainer, makeLabeledEllipse, makeLabeledRect],
   );
 
   useEffect(() => {
