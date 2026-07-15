@@ -1,6 +1,17 @@
 import { CaptureUpdateAction, useExcalidrawAPI } from "@excalidraw/excalidraw";
-import { newElement, newTextElement } from "@excalidraw/element";
-import { randomId, viewportCoordsToSceneCoords } from "@excalidraw/common";
+import {
+  newElement,
+  newTextElement,
+  wrapText,
+  getLineHeightInPx,
+} from "@excalidraw/element";
+import {
+  randomId,
+  viewportCoordsToSceneCoords,
+  getFontString,
+  getLineHeight,
+  DEFAULT_FONT_FAMILY,
+} from "@excalidraw/common";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   LockedIcon,
@@ -114,10 +125,50 @@ type PaletteItem = {
 
 const STROKE = "#1f1f1f";
 const FONT_SIZE = 22;
+const MIN_LABEL_FONT_SIZE = 10;
 // Below this, a pointer-up reads as a plain click and places nothing.
 const DRAG_CLICK_THRESHOLD = 6;
 // Smallest shape a drag can produce; prevents degenerate slivers.
 const MIN_DRAG_SIZE = 40;
+
+// Labels are plain (unbound) text elements positioned at a shape's center,
+// so unlike a container-bound label they don't auto-wrap or auto-shrink to
+// fit. Drag-to-size shapes can end up much smaller than the default, so
+// wrap the label to the available width and shrink it until the wrapped
+// block fits the available height, instead of letting it spill past the
+// shape's edges.
+const fitLabelText = (
+  text: string,
+  availableWidth: number,
+  availableHeight: number,
+) => {
+  let fontSize = Math.min(
+    FONT_SIZE,
+    Math.max(availableHeight, MIN_LABEL_FONT_SIZE),
+  );
+  let wrapped = text;
+
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const font = getFontString({
+      fontFamily: DEFAULT_FONT_FAMILY,
+      fontSize,
+    });
+    wrapped = wrapText(text, font, Math.max(availableWidth, fontSize));
+    const lineCount = wrapped.split("\n").length;
+    const blockHeight =
+      getLineHeightInPx(fontSize, getLineHeight(DEFAULT_FONT_FAMILY)) *
+      lineCount;
+
+    if (blockHeight <= availableHeight || fontSize <= MIN_LABEL_FONT_SIZE) {
+      break;
+    }
+
+    fontSize = Math.max(MIN_LABEL_FONT_SIZE, fontSize - 2);
+  }
+
+  return { fontSize, text: wrapped };
+};
+
 // Default gap from the right edge when Excalidraw's own right-docked
 // sidebar (library/search/stats) isn't open.
 const DEFAULT_DOCK_RIGHT = 16;
@@ -191,11 +242,13 @@ export const SystemDesignPalette = () => {
           groupIds: [groupId],
         });
 
+        const fitted = fitLabelText(label, width - 16, height - 12);
         const text = newTextElement({
           x,
           y,
-          text: label,
-          fontSize: FONT_SIZE,
+          text: fitted.text,
+          fontSize: fitted.fontSize,
+          fontFamily: DEFAULT_FONT_FAMILY,
           strokeColor: STROKE,
           backgroundColor: "transparent",
           textAlign: "center",
@@ -237,11 +290,16 @@ export const SystemDesignPalette = () => {
           groupIds: [groupId],
         });
 
+        // Approximate the rectangle inscribed in the ellipse (a centered
+        // block stays clear of the curve at roughly 0.7x the full
+        // width/height) so the label doesn't run past the outline.
+        const fitted = fitLabelText(label, width * 0.7 - 12, height * 0.7 - 8);
         const text = newTextElement({
           x,
           y,
-          text: label,
-          fontSize: FONT_SIZE,
+          text: fitted.text,
+          fontSize: fitted.fontSize,
+          fontFamily: DEFAULT_FONT_FAMILY,
           strokeColor: STROKE,
           backgroundColor: "transparent",
           textAlign: "center",
