@@ -424,8 +424,8 @@ export const SystemDesignPalette = () => {
           makeLabeledRect(x, y, "Service", {
             backgroundColor: "#ffc9c9",
             strokeColor: "#e03131",
-            width: size?.width,
-            height: size?.height,
+            width: size?.width ?? 150,
+            height: size?.height ?? 64,
           }),
       },
       {
@@ -478,8 +478,8 @@ export const SystemDesignPalette = () => {
             backgroundColor: "#ffc9c9",
             strokeColor: "#e03131",
             caption: "Auth + Rate Limiter",
-            width: size?.width ?? 100,
-            height: size?.height ?? 200,
+            width: size?.width,
+            height: size?.height,
           }),
       },
       {
