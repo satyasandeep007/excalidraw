@@ -3,17 +3,106 @@ import { newElement, newTextElement } from "@excalidraw/element";
 import { randomId, viewportCoordsToSceneCoords } from "@excalidraw/common";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowIcon,
-  DiamondIcon,
-  EllipseIcon,
-  LibraryIcon,
   LockedIcon,
-  RectangleIcon,
-  TextIcon,
   UnlockedIcon,
 } from "@excalidraw/excalidraw/components/icons";
 
 type ElementSize = { width: number; height: number };
+
+// Small icon set drawn specifically for this palette: each one is a
+// miniature of the actual shape it drops onto the canvas (a gate for API
+// Gateway, a fan-out for Load Balancer, a cylinder for Database, etc.)
+// instead of borrowing Excalidraw's generic rectangle/circle tool icons,
+// which carried no relation to what each button actually inserts.
+const paletteIconProps = {
+  width: 24,
+  height: 24,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.6,
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
+};
+
+const ApiGatewayIcon = (
+  <svg {...paletteIconProps}>
+    <rect x="2.5" y="7" width="3" height="10" rx="1" />
+    <rect x="18.5" y="7" width="3" height="10" rx="1" />
+    <path d="M6 12h12" />
+    <path d="M14 8.5L18 12l-4 3.5" />
+  </svg>
+);
+
+const LoadBalancerIcon = (
+  <svg {...paletteIconProps}>
+    <circle cx="12" cy="4.8" r="2.1" />
+    <circle cx="4.8" cy="19.2" r="2.1" />
+    <circle cx="12" cy="19.2" r="2.1" />
+    <circle cx="19.2" cy="19.2" r="2.1" />
+    <path d="M12 7v10M12 7L4.8 17.2M12 7l7.2 10.2" />
+  </svg>
+);
+
+const ServiceIcon = (
+  <svg {...paletteIconProps}>
+    <path d="M12 2.5l8 4.4v10.2l-8 4.4-8-4.4V6.9z" />
+  </svg>
+);
+
+const WorkerIcon = (
+  <svg {...paletteIconProps}>
+    <circle cx="12" cy="12" r="3.1" />
+    <path d="M12 3v2.4M12 18.6V21M21 12h-2.4M5.4 12H3M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2L5.5 5.5" />
+  </svg>
+);
+
+const QueueIcon = (
+  <svg {...paletteIconProps}>
+    <rect x="1.8" y="8" width="4.4" height="8" rx="1" />
+    <rect x="9.8" y="8" width="4.4" height="8" rx="1" />
+    <rect x="17.8" y="8" width="4.4" height="8" rx="1" />
+  </svg>
+);
+
+const TopicIcon = (
+  <svg {...paletteIconProps}>
+    <circle cx="12" cy="18.2" r="1.5" fill="currentColor" stroke="none" />
+    <path d="M8.4 14.6a5.2 5.2 0 0 1 7.2 0" />
+    <path d="M5.2 11.4a9.6 9.6 0 0 1 13.6 0" />
+  </svg>
+);
+
+const DatabaseIcon = (
+  <svg {...paletteIconProps}>
+    <ellipse cx="12" cy="6" rx="7.5" ry="3" />
+    <path d="M4.5 6v12a7.5 3 0 0 0 15 0V6" />
+  </svg>
+);
+
+const CacheIcon = (
+  <svg {...paletteIconProps}>
+    <path
+      d="M13 2.5L4.8 13.5h5.6l-1 8 8.2-11h-5.6z"
+      fill="currentColor"
+      stroke="none"
+    />
+  </svg>
+);
+
+const ProducerIcon = (
+  <svg {...paletteIconProps}>
+    <circle cx="6.6" cy="12" r="4" />
+    <path d="M12.6 12h5.6M15.6 8.6l3.4 3.4-3.4 3.4" />
+  </svg>
+);
+
+const ConsumerIcon = (
+  <svg {...paletteIconProps}>
+    <circle cx="17.4" cy="12" r="4" />
+    <path d="M11.4 12H5.8M8.8 8.6L5.4 12l3.4 3.4" />
+  </svg>
+);
 
 type PaletteItem = {
   id: string;
@@ -319,7 +408,7 @@ export const SystemDesignPalette = () => {
         id: "api-gateway",
         label: "API Gateway",
         shortcut: "1",
-        icon: RectangleIcon,
+        icon: ApiGatewayIcon,
         insert: (x, y, size) =>
           makeLabeledRect(x, y, "API Gateway", {
             backgroundColor: "#d0ebff",
@@ -331,7 +420,7 @@ export const SystemDesignPalette = () => {
         id: "load-balancer",
         label: "Load Balancer",
         shortcut: "2",
-        icon: DiamondIcon,
+        icon: LoadBalancerIcon,
         insert: (x, y, size) =>
           makeLabeledRect(x, y, "Load Balancer", {
             backgroundColor: "#ffe8cc",
@@ -343,7 +432,7 @@ export const SystemDesignPalette = () => {
         id: "service",
         label: "Service",
         shortcut: "3",
-        icon: RectangleIcon,
+        icon: ServiceIcon,
         insert: (x, y, size) =>
           makeLabeledRect(x, y, "Service", {
             backgroundColor: "#d3f9d8",
@@ -355,7 +444,7 @@ export const SystemDesignPalette = () => {
         id: "worker",
         label: "Worker",
         shortcut: "4",
-        icon: RectangleIcon,
+        icon: WorkerIcon,
         insert: (x, y, size) =>
           makeLabeledRect(x, y, "Worker", {
             backgroundColor: "#f3d9fa",
@@ -367,14 +456,14 @@ export const SystemDesignPalette = () => {
         id: "queue",
         label: "Message Queue",
         shortcut: "5",
-        icon: ArrowIcon,
+        icon: QueueIcon,
         insert: (x, y) => makeQueue(x, y),
       },
       {
         id: "topic",
         label: "Topic",
         shortcut: "6",
-        icon: EllipseIcon,
+        icon: TopicIcon,
         insert: (x, y, size) =>
           makeLabeledEllipse(x, y, "Topic", "#fff3bf", size),
       },
@@ -382,14 +471,14 @@ export const SystemDesignPalette = () => {
         id: "db",
         label: "Database",
         shortcut: "7",
-        icon: LibraryIcon,
+        icon: DatabaseIcon,
         insert: (x, y) => makeDatabase(x, y),
       },
       {
         id: "cache",
         label: "Cache",
         shortcut: "8",
-        icon: RectangleIcon,
+        icon: CacheIcon,
         insert: (x, y, size) =>
           makeLabeledRect(x, y, "Cache", {
             backgroundColor: "#e5dbff",
@@ -401,7 +490,7 @@ export const SystemDesignPalette = () => {
         id: "producer",
         label: "Producer",
         shortcut: "9",
-        icon: EllipseIcon,
+        icon: ProducerIcon,
         insert: (x, y, size) =>
           makeLabeledEllipse(x, y, "Producer", "#ffc9c9", size),
       },
@@ -409,7 +498,7 @@ export const SystemDesignPalette = () => {
         id: "consumer",
         label: "Consumer",
         shortcut: "0",
-        icon: TextIcon,
+        icon: ConsumerIcon,
         insert: (x, y, size) =>
           makeLabeledEllipse(x, y, "Consumer", "#d8f5a2", size),
       },
