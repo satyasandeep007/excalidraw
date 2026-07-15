@@ -118,9 +118,9 @@ const FONT_SIZE = 22;
 const DRAG_CLICK_THRESHOLD = 6;
 // Smallest shape a drag can produce; prevents degenerate slivers.
 const MIN_DRAG_SIZE = 40;
-// Default docking offset from the top when Excalidraw's own selected-shape
-// panel isn't taking up space there.
-const DEFAULT_DOCK_TOP = 144;
+// Default gap from the right edge when Excalidraw's own right-docked
+// sidebar (library/search/stats) isn't open.
+const DEFAULT_DOCK_RIGHT = 16;
 const DOCK_GAP = 16;
 
 export const SystemDesignPalette = () => {
@@ -128,7 +128,7 @@ export const SystemDesignPalette = () => {
   const rootRef = useRef<HTMLDivElement>(null);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [isLocked, setIsLocked] = useState(false);
-  const [dockTop, setDockTop] = useState(DEFAULT_DOCK_TOP);
+  const [dockRight, setDockRight] = useState(DEFAULT_DOCK_RIGHT);
   const [dragPreview, setDragPreview] = useState<{
     left: number;
     top: number;
@@ -146,8 +146,9 @@ export const SystemDesignPalette = () => {
       const currentElements = excalidrawAPI.getSceneElements();
 
       // Intentionally leave the new elements unselected: selecting them
-      // would pop open Excalidraw's own shape-properties panel in the same
-      // top-left corner as this sidebar, right after every placement.
+      // would pop open Excalidraw's own shape-properties panel, mirroring
+      // how the native shape tools behave (see App.tsx onPointerUp, which
+      // only auto-selects linear elements, not generic shapes).
       excalidrawAPI.updateScene({
         elements: [...currentElements, ...nextElements],
         captureUpdate: CaptureUpdateAction.IMMEDIATELY,
@@ -522,38 +523,52 @@ export const SystemDesignPalette = () => {
     };
   }, [activeItemId, excalidrawAPI]);
 
-  // Excalidraw's own shape-properties panel renders in the same top-left
-  // corner as this sidebar whenever something is selected or a native tool
-  // is active. Track its height and dock below it so the two never overlap,
-  // instead of relying on a fixed offset that only worked when it was hidden.
+  // Excalidraw's own right-docked sidebar (library/search/stats) can open
+  // in the same corner as this toolbar. Track its width and slide left of
+  // it instead of overlapping, similar to how a native sidebar-aware panel
+  // would behave.
   useEffect(() => {
-    let observer: ResizeObserver | null = null;
-    let rafId: number | null = null;
+    const root = document.querySelector<HTMLElement>(".excalidraw");
+    if (!root) {
+      return;
+    }
 
-    const updateDockTop = (el: HTMLElement) => {
-      const bottom = el.getBoundingClientRect().bottom;
-      setDockTop(Math.max(DEFAULT_DOCK_TOP, bottom + DOCK_GAP));
+    let sidebarObserver: ResizeObserver | null = null;
+
+    const updateDockRight = () => {
+      const sidebar = root.querySelector<HTMLElement>(".sidebar");
+      setDockRight(
+        sidebar
+          ? sidebar.getBoundingClientRect().width + DOCK_GAP
+          : DEFAULT_DOCK_RIGHT,
+      );
     };
 
-    const attach = () => {
-      const el = document.querySelector<HTMLElement>(".App-menu_top__left");
-      if (!el) {
-        rafId = requestAnimationFrame(attach);
-        return;
+    const attachSidebarObserver = () => {
+      sidebarObserver?.disconnect();
+      sidebarObserver = null;
+
+      const sidebar = root.querySelector<HTMLElement>(".sidebar");
+      if (sidebar) {
+        sidebarObserver = new ResizeObserver(updateDockRight);
+        sidebarObserver.observe(sidebar);
       }
-
-      updateDockTop(el);
-      observer = new ResizeObserver(() => updateDockTop(el));
-      observer.observe(el);
     };
 
-    attach();
+    updateDockRight();
+    attachSidebarObserver();
+
+    // The sidebar mounts/unmounts as the user opens and closes it, so watch
+    // for that instead of only its size once it exists.
+    const mutationObserver = new MutationObserver(() => {
+      updateDockRight();
+      attachSidebarObserver();
+    });
+    mutationObserver.observe(root, { childList: true, subtree: true });
 
     return () => {
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-      }
-      observer?.disconnect();
+      mutationObserver.disconnect();
+      sidebarObserver?.disconnect();
     };
   }, []);
 
@@ -692,7 +707,7 @@ export const SystemDesignPalette = () => {
       ref={rootRef}
       className="system-design-toolbar"
       aria-label="System design toolbar"
-      style={{ top: `${dockTop}px` }}
+      style={{ right: `${dockRight}px` }}
     >
       <div className="system-design-toolbar__header">
         <span>SD</span>
