@@ -1,6 +1,6 @@
 import { CaptureUpdateAction, useExcalidrawAPI } from "@excalidraw/excalidraw";
 import { newElement, newTextElement } from "@excalidraw/element";
-import { randomId } from "@excalidraw/common";
+import { randomId, viewportCoordsToSceneCoords } from "@excalidraw/common";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowIcon,
@@ -13,22 +13,39 @@ import {
   UnlockedIcon,
 } from "@excalidraw/excalidraw/components/icons";
 
+type ElementSize = { width: number; height: number };
+
 type PaletteItem = {
   id: string;
   label: string;
   shortcut: string;
   icon: React.ReactNode;
-  insert: (x: number, y: number) => void;
+  insert: (x: number, y: number, size?: ElementSize) => void;
 };
 
 const STROKE = "#1f1f1f";
 const FONT_SIZE = 22;
+// Below this, a drag reads as a simple click (place at default size).
+const DRAG_CLICK_THRESHOLD = 6;
+// Smallest shape a drag can produce; prevents degenerate slivers.
+const MIN_DRAG_SIZE = 40;
+// Default docking offset from the top when Excalidraw's own selected-shape
+// panel isn't taking up space there.
+const DEFAULT_DOCK_TOP = 144;
+const DOCK_GAP = 16;
 
 export const SystemDesignPalette = () => {
   const excalidrawAPI = useExcalidrawAPI();
   const rootRef = useRef<HTMLDivElement>(null);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [isLocked, setIsLocked] = useState(false);
+  const [dockTop, setDockTop] = useState(DEFAULT_DOCK_TOP);
+  const [dragPreview, setDragPreview] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null>(null);
 
   const insertElements = useCallback(
     (elementsFactory: () => any[]) => {
@@ -38,16 +55,12 @@ export const SystemDesignPalette = () => {
 
       const nextElements = elementsFactory();
       const currentElements = excalidrawAPI.getSceneElements();
-      const selectedElementIds = Object.fromEntries(
-        nextElements.map((element) => [element.id, true]),
-      );
 
+      // Intentionally leave the new elements unselected: selecting them
+      // would pop open Excalidraw's own shape-properties panel in the same
+      // top-left corner as this sidebar, right after every placement.
       excalidrawAPI.updateScene({
         elements: [...currentElements, ...nextElements],
-        appState: {
-          ...excalidrawAPI.getAppState(),
-          selectedElementIds,
-        },
         captureUpdate: CaptureUpdateAction.IMMEDIATELY,
       });
     },
@@ -107,10 +120,16 @@ export const SystemDesignPalette = () => {
   );
 
   const makeLabeledEllipse = useCallback(
-    (x: number, y: number, label: string, backgroundColor: string) => {
+    (
+      x: number,
+      y: number,
+      label: string,
+      backgroundColor: string,
+      size?: ElementSize,
+    ) => {
       insertElements(() => {
-        const width = 180;
-        const height = 180;
+        const width = size?.width ?? 180;
+        const height = size?.height ?? 180;
         const groupId = randomId();
         const origin = { x: x - width / 2, y: y - height / 2 };
 
@@ -301,9 +320,11 @@ export const SystemDesignPalette = () => {
         label: "API Gateway",
         shortcut: "1",
         icon: RectangleIcon,
-        insert: (x, y) =>
+        insert: (x, y, size) =>
           makeLabeledRect(x, y, "API Gateway", {
             backgroundColor: "#d0ebff",
+            width: size?.width,
+            height: size?.height,
           }),
       },
       {
@@ -311,9 +332,11 @@ export const SystemDesignPalette = () => {
         label: "Load Balancer",
         shortcut: "2",
         icon: DiamondIcon,
-        insert: (x, y) =>
+        insert: (x, y, size) =>
           makeLabeledRect(x, y, "Load Balancer", {
             backgroundColor: "#ffe8cc",
+            width: size?.width,
+            height: size?.height,
           }),
       },
       {
@@ -321,9 +344,11 @@ export const SystemDesignPalette = () => {
         label: "Service",
         shortcut: "3",
         icon: RectangleIcon,
-        insert: (x, y) =>
+        insert: (x, y, size) =>
           makeLabeledRect(x, y, "Service", {
             backgroundColor: "#d3f9d8",
+            width: size?.width,
+            height: size?.height,
           }),
       },
       {
@@ -331,9 +356,11 @@ export const SystemDesignPalette = () => {
         label: "Worker",
         shortcut: "4",
         icon: RectangleIcon,
-        insert: (x, y) =>
+        insert: (x, y, size) =>
           makeLabeledRect(x, y, "Worker", {
             backgroundColor: "#f3d9fa",
+            width: size?.width,
+            height: size?.height,
           }),
       },
       {
@@ -341,30 +368,33 @@ export const SystemDesignPalette = () => {
         label: "Message Queue",
         shortcut: "5",
         icon: ArrowIcon,
-        insert: makeQueue,
+        insert: (x, y) => makeQueue(x, y),
       },
       {
         id: "topic",
         label: "Topic",
         shortcut: "6",
         icon: EllipseIcon,
-        insert: (x, y) => makeLabeledEllipse(x, y, "Topic", "#fff3bf"),
+        insert: (x, y, size) =>
+          makeLabeledEllipse(x, y, "Topic", "#fff3bf", size),
       },
       {
         id: "db",
         label: "Database",
         shortcut: "7",
         icon: LibraryIcon,
-        insert: makeDatabase,
+        insert: (x, y) => makeDatabase(x, y),
       },
       {
         id: "cache",
         label: "Cache",
         shortcut: "8",
         icon: RectangleIcon,
-        insert: (x, y) =>
+        insert: (x, y, size) =>
           makeLabeledRect(x, y, "Cache", {
             backgroundColor: "#e5dbff",
+            width: size?.width,
+            height: size?.height,
           }),
       },
       {
@@ -372,14 +402,16 @@ export const SystemDesignPalette = () => {
         label: "Producer",
         shortcut: "9",
         icon: EllipseIcon,
-        insert: (x, y) => makeLabeledEllipse(x, y, "Producer", "#ffc9c9"),
+        insert: (x, y, size) =>
+          makeLabeledEllipse(x, y, "Producer", "#ffc9c9", size),
       },
       {
         id: "consumer",
         label: "Consumer",
         shortcut: "0",
         icon: TextIcon,
-        insert: (x, y) => makeLabeledEllipse(x, y, "Consumer", "#d8f5a2"),
+        insert: (x, y, size) =>
+          makeLabeledEllipse(x, y, "Consumer", "#d8f5a2", size),
       },
     ],
     [makeDatabase, makeLabeledEllipse, makeLabeledRect, makeQueue],
@@ -401,6 +433,41 @@ export const SystemDesignPalette = () => {
     };
   }, [activeItemId, excalidrawAPI]);
 
+  // Excalidraw's own shape-properties panel renders in the same top-left
+  // corner as this sidebar whenever something is selected or a native tool
+  // is active. Track its height and dock below it so the two never overlap,
+  // instead of relying on a fixed offset that only worked when it was hidden.
+  useEffect(() => {
+    let observer: ResizeObserver | null = null;
+    let rafId: number | null = null;
+
+    const updateDockTop = (el: HTMLElement) => {
+      const bottom = el.getBoundingClientRect().bottom;
+      setDockTop(Math.max(DEFAULT_DOCK_TOP, bottom + DOCK_GAP));
+    };
+
+    const attach = () => {
+      const el = document.querySelector<HTMLElement>(".App-menu_top__left");
+      if (!el) {
+        rafId = requestAnimationFrame(attach);
+        return;
+      }
+
+      updateDockTop(el);
+      observer = new ResizeObserver(() => updateDockTop(el));
+      observer.observe(el);
+    };
+
+    attach();
+
+    return () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+      observer?.disconnect();
+    };
+  }, []);
+
   useEffect(() => {
     if (!activeItemId || !excalidrawAPI) {
       return;
@@ -412,23 +479,66 @@ export const SystemDesignPalette = () => {
       return;
     }
 
-    const onPointerDown = (event: PointerEvent) => {
-      if (event.button !== 0) {
+    let dragStart: {
+      clientX: number;
+      clientY: number;
+      sceneX: number;
+      sceneY: number;
+    } | null = null;
+
+    const toScene = (event: { clientX: number; clientY: number }) =>
+      viewportCoordsToSceneCoords(event, excalidrawAPI.getAppState());
+
+    const endDrag = () => {
+      dragStart = null;
+      setDragPreview(null);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
+    };
+
+    const onPointerMove = (event: PointerEvent) => {
+      if (!dragStart) {
         return;
       }
 
-      // Only place a shape when the click actually lands on the drawing
-      // canvas. Anything else (top toolbar, side panels, our own sidebar,
-      // dialogs, etc.) should behave like a normal UI click.
-      const target = event.target as HTMLElement;
-      if (!target.closest?.(".excalidraw__canvas")) {
+      setDragPreview({
+        left: Math.min(dragStart.clientX, event.clientX),
+        top: Math.min(dragStart.clientY, event.clientY),
+        width: Math.abs(event.clientX - dragStart.clientX),
+        height: Math.abs(event.clientY - dragStart.clientY),
+      });
+    };
+
+    const onPointerUp = (event: PointerEvent) => {
+      if (!dragStart) {
         return;
       }
 
-      const appState = excalidrawAPI.getAppState();
-      const x = event.clientX - appState.offsetLeft - appState.scrollX;
-      const y = event.clientY - appState.offsetTop - appState.scrollY;
-      activeInsert(x, y);
+      const dragDistance = Math.hypot(
+        event.clientX - dragStart.clientX,
+        event.clientY - dragStart.clientY,
+      );
+
+      if (dragDistance < DRAG_CLICK_THRESHOLD) {
+        // Treated as a plain click: drop the shape at its default size.
+        activeInsert(dragStart.sceneX, dragStart.sceneY);
+      } else {
+        const { x: endX, y: endY } = toScene(event);
+        const width = Math.max(
+          MIN_DRAG_SIZE,
+          Math.abs(endX - dragStart.sceneX),
+        );
+        const height = Math.max(
+          MIN_DRAG_SIZE,
+          Math.abs(endY - dragStart.sceneY),
+        );
+        const centerX = Math.min(dragStart.sceneX, endX) + width / 2;
+        const centerY = Math.min(dragStart.sceneY, endY) + height / 2;
+        activeInsert(centerX, centerY, { width, height });
+      }
+
+      endDrag();
 
       // Single-shot by default, mirroring Excalidraw's own shape tools:
       // place one element, then fall back to the selection tool. Locking
@@ -438,18 +548,53 @@ export const SystemDesignPalette = () => {
       }
     };
 
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.button !== 0) {
+        return;
+      }
+
+      // Only arm a placement when the click actually lands on the drawing
+      // canvas. Anything else (top toolbar, side panels, our own sidebar,
+      // dialogs, etc.) should behave like a normal UI click.
+      const target = event.target as HTMLElement;
+      if (!target.closest?.(".excalidraw__canvas")) {
+        return;
+      }
+
+      // Stop this pointerdown from ever reaching Excalidraw's own canvas
+      // handlers, otherwise its default tool starts its own rubber-band
+      // selection/drag underneath ours at the same time.
+      event.preventDefault();
+      event.stopPropagation();
+
+      const { x, y } = toScene(event);
+      dragStart = {
+        clientX: event.clientX,
+        clientY: event.clientY,
+        sceneX: x,
+        sceneY: y,
+      };
+      window.addEventListener("pointermove", onPointerMove);
+      window.addEventListener("pointerup", onPointerUp);
+      window.addEventListener("pointercancel", onPointerUp);
+    };
+
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        endDrag();
         setActiveItemId(null);
       }
     };
 
-    window.addEventListener("pointerdown", onPointerDown);
+    // Capture phase so we can stop the event before Excalidraw's own canvas
+    // handlers (attached further down the tree) ever see it.
+    window.addEventListener("pointerdown", onPointerDown, true);
     window.addEventListener("keydown", onKeyDown);
 
     return () => {
-      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("pointerdown", onPointerDown, true);
       window.removeEventListener("keydown", onKeyDown);
+      endDrag();
     };
   }, [activeItemId, excalidrawAPI, isLocked, items]);
 
@@ -458,6 +603,7 @@ export const SystemDesignPalette = () => {
       ref={rootRef}
       className="system-design-toolbar"
       aria-label="System design toolbar"
+      style={{ top: `${dockTop}px` }}
     >
       <div className="system-design-toolbar__header">
         <span>SD</span>
@@ -503,6 +649,17 @@ export const SystemDesignPalette = () => {
           </button>
         ))}
       </div>
+      {dragPreview && (
+        <div
+          className="system-design-toolbar__drag-preview"
+          style={{
+            left: dragPreview.left,
+            top: dragPreview.top,
+            width: dragPreview.width,
+            height: dragPreview.height,
+          }}
+        />
+      )}
     </div>
   );
 };
