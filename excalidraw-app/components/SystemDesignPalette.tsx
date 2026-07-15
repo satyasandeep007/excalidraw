@@ -114,7 +114,7 @@ type PaletteItem = {
 
 const STROKE = "#1f1f1f";
 const FONT_SIZE = 22;
-// Below this, a drag reads as a simple click (place at default size).
+// Below this, a pointer-up reads as a plain click and places nothing.
 const DRAG_CLICK_THRESHOLD = 6;
 // Smallest shape a drag can produce; prevents degenerate slivers.
 const MIN_DRAG_SIZE = 40;
@@ -625,22 +625,20 @@ export const SystemDesignPalette = () => {
       );
 
       if (dragDistance < DRAG_CLICK_THRESHOLD) {
-        // Treated as a plain click: drop the shape at its default size.
-        activeInsert(dragStart.sceneX, dragStart.sceneY);
-      } else {
-        const { x: endX, y: endY } = toScene(event);
-        const width = Math.max(
-          MIN_DRAG_SIZE,
-          Math.abs(endX - dragStart.sceneX),
-        );
-        const height = Math.max(
-          MIN_DRAG_SIZE,
-          Math.abs(endY - dragStart.sceneY),
-        );
-        const centerX = Math.min(dragStart.sceneX, endX) + width / 2;
-        const centerY = Math.min(dragStart.sceneY, endY) + height / 2;
-        activeInsert(centerX, centerY, { width, height });
+        // A plain click with no drag places nothing, mirroring Excalidraw's
+        // own shape tools: a click-only rectangle/ellipse is "invisibly
+        // small" and gets discarded (see App.tsx's isInvisiblySmallElement
+        // check). Leave the tool armed so the user can just try the drag.
+        endDrag();
+        return;
       }
+
+      const { x: endX, y: endY } = toScene(event);
+      const width = Math.max(MIN_DRAG_SIZE, Math.abs(endX - dragStart.sceneX));
+      const height = Math.max(MIN_DRAG_SIZE, Math.abs(endY - dragStart.sceneY));
+      const centerX = Math.min(dragStart.sceneX, endX) + width / 2;
+      const centerY = Math.min(dragStart.sceneY, endY) + height / 2;
+      activeInsert(centerX, centerY, { width, height });
 
       endDrag();
 
