@@ -7,7 +7,6 @@ import {
   computeContainerDimensionForBoundText,
 } from "@excalidraw/element";
 import {
-  randomId,
   viewportCoordsToSceneCoords,
   getFontString,
   getLineHeight,
@@ -197,7 +196,6 @@ export const SystemDesignPalette = () => {
         );
         const width = fitted.width;
         const height = fitted.height;
-        const groupId = randomId();
         const origin = { x: x - width / 2, y: y - height / 2 };
         const strokeColor = opts.strokeColor ?? STROKE;
 
@@ -213,9 +211,15 @@ export const SystemDesignPalette = () => {
           strokeWidth: 2,
           roughness: 1,
           roundness: opts.roundness ?? { type: 2 },
-          groupIds: [groupId],
         });
 
+        // A real container-bound label (containerId + container.boundElements)
+        // rather than a same-sized freestanding text grouped alongside the
+        // shape: grouping a shape with a plain text element makes Excalidraw
+        // lock the group to uniform scaling on resize (it won't stretch text),
+        // so single-edge resize handles end up scaling the whole thing instead
+        // of just that one side. Binding the text properly makes this shape
+        // resize exactly like a native rectangle you'd draw and label by hand.
         const text = newTextElement({
           x,
           y,
@@ -226,10 +230,17 @@ export const SystemDesignPalette = () => {
           backgroundColor: "transparent",
           textAlign: "center",
           verticalAlign: "middle",
-          groupIds: [groupId],
+          containerId: container.id,
+          groupIds: container.groupIds,
+          angle: container.angle,
         });
 
-        const elements = [container, text];
+        const boundContainer = {
+          ...container,
+          boundElements: [{ id: text.id, type: "text" as const }],
+        };
+
+        const elements = [boundContainer, text];
 
         if (opts.caption) {
           elements.push(
@@ -243,7 +254,6 @@ export const SystemDesignPalette = () => {
               backgroundColor: "transparent",
               textAlign: "center",
               verticalAlign: "top",
-              groupIds: [groupId],
             }),
           );
         }
@@ -276,7 +286,6 @@ export const SystemDesignPalette = () => {
         );
         const width = fitted.width;
         const height = fitted.height;
-        const groupId = randomId();
         const origin = { x: x - width / 2, y: y - height / 2 };
         const strokeColor = opts.strokeColor ?? STROKE;
 
@@ -291,9 +300,11 @@ export const SystemDesignPalette = () => {
           fillStyle: opts.fillStyle ?? "hachure",
           strokeWidth: 2,
           roughness: 1,
-          groupIds: [groupId],
         });
 
+        // See makeLabeledRect: a real bound label instead of a grouped
+        // freestanding text, so single-edge resize handles work normally
+        // instead of being locked to uniform scaling.
         const text = newTextElement({
           x,
           y,
@@ -304,10 +315,17 @@ export const SystemDesignPalette = () => {
           backgroundColor: "transparent",
           textAlign: "center",
           verticalAlign: "middle",
-          groupIds: [groupId],
+          containerId: container.id,
+          groupIds: container.groupIds,
+          angle: container.angle,
         });
 
-        const elements = [container, text];
+        const boundContainer = {
+          ...container,
+          boundElements: [{ id: text.id, type: "text" as const }],
+        };
+
+        const elements = [boundContainer, text];
 
         if (opts.caption) {
           elements.push(
@@ -321,7 +339,6 @@ export const SystemDesignPalette = () => {
               backgroundColor: "transparent",
               textAlign: "center",
               verticalAlign: "top",
-              groupIds: [groupId],
             }),
           );
         }
@@ -341,7 +358,6 @@ export const SystemDesignPalette = () => {
       insertElements(() => {
         const width = size?.width ?? 480;
         const height = size?.height ?? 360;
-        const groupId = randomId();
         const origin = { x: x - width / 2, y: y - height / 2 };
 
         const container = newElement({
@@ -356,9 +372,10 @@ export const SystemDesignPalette = () => {
           strokeWidth: 1.5,
           roughness: 1,
           roundness: { type: 2 },
-          groupIds: [groupId],
         });
 
+        // Bound label (see makeLabeledRect) so the box resizes on any edge
+        // like a normal rectangle instead of being locked to uniform scale.
         const text = newTextElement({
           x: origin.x + 14,
           y: origin.y + 10,
@@ -369,10 +386,17 @@ export const SystemDesignPalette = () => {
           backgroundColor: "transparent",
           textAlign: "left",
           verticalAlign: "top",
-          groupIds: [groupId],
+          containerId: container.id,
+          groupIds: container.groupIds,
+          angle: container.angle,
         });
 
-        return [container, text];
+        const boundContainer = {
+          ...container,
+          boundElements: [{ id: text.id, type: "text" as const }],
+        };
+
+        return [boundContainer, text];
       });
     },
     [insertElements],
