@@ -1,16 +1,11 @@
 import { CaptureUpdateAction, useExcalidrawAPI } from "@excalidraw/excalidraw";
-import {
-  newElement,
-  newTextElement,
-  wrapText,
-  getLineHeightInPx,
-} from "@excalidraw/element";
+import { newElement, newTextElement, wrapText } from "@excalidraw/element";
 import {
   randomId,
   viewportCoordsToSceneCoords,
   getFontString,
-  getLineHeight,
   DEFAULT_FONT_FAMILY,
+  FONT_SIZES,
 } from "@excalidraw/common";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -86,47 +81,21 @@ type PaletteItem = {
 };
 
 const STROKE = "#1f1f1f";
-const FONT_SIZE = 22;
-const MIN_LABEL_FONT_SIZE = 10;
 // Below this, a pointer-up reads as a plain click and places nothing.
 const DRAG_CLICK_THRESHOLD = 6;
 // Smallest shape a drag can produce; prevents degenerate slivers.
 const MIN_DRAG_SIZE = 40;
 
-// Labels are plain (unbound) text elements positioned at a shape's center,
-// so unlike a container-bound label they don't auto-wrap or auto-shrink to
-// fit. Drag-to-size shapes can end up much smaller than the default, so
-// wrap the label to the available width and shrink it until the wrapped
-// block fits the available height, instead of letting it spill past the
-// shape's edges.
-const fitLabelText = (
-  text: string,
-  availableWidth: number,
-  availableHeight: number,
-) => {
-  let fontSize = Math.min(
-    FONT_SIZE,
-    Math.max(availableHeight, MIN_LABEL_FONT_SIZE),
-  );
-  let wrapped = text;
-
-  for (let attempt = 0; attempt < 8; attempt++) {
-    const font = getFontString({
-      fontFamily: DEFAULT_FONT_FAMILY,
-      fontSize,
-    });
-    wrapped = wrapText(text, font, Math.max(availableWidth, fontSize));
-    const lineCount = wrapped.split("\n").length;
-    const blockHeight =
-      getLineHeightInPx(fontSize, getLineHeight(DEFAULT_FONT_FAMILY)) *
-      lineCount;
-
-    if (blockHeight <= availableHeight || fontSize <= MIN_LABEL_FONT_SIZE) {
-      break;
-    }
-
-    fontSize = Math.max(MIN_LABEL_FONT_SIZE, fontSize - 2);
-  }
+// All labels stay at Excalidraw's own "M" preset size (the same one the
+// font-size buttons in the properties panel use) rather than shrinking
+// per-shape, so a diagram reads consistently regardless of how each box
+// was sized. Labels are plain (unbound) text elements, so they don't
+// auto-wrap the way a container-bound label would; wrap to the available
+// width ourselves so text doesn't spill past a narrow shape's edges.
+const fitLabelText = (text: string, availableWidth: number) => {
+  const fontSize: number = FONT_SIZES.md;
+  const font = getFontString({ fontFamily: DEFAULT_FONT_FAMILY, fontSize });
+  const wrapped = wrapText(text, font, Math.max(availableWidth, fontSize));
 
   return { fontSize, text: wrapped };
 };
@@ -207,7 +176,7 @@ export const SystemDesignPalette = () => {
           groupIds: [groupId],
         });
 
-        const fitted = fitLabelText(label, width - 16, height - 12);
+        const fitted = fitLabelText(label, width - 16);
         const text = newTextElement({
           x,
           y,
@@ -281,9 +250,9 @@ export const SystemDesignPalette = () => {
         });
 
         // Approximate the rectangle inscribed in the ellipse (a centered
-        // block stays clear of the curve at roughly 0.7x the full
-        // width/height) so the label doesn't run past the outline.
-        const fitted = fitLabelText(label, width * 0.7 - 12, height * 0.7 - 8);
+        // block stays clear of the curve at roughly 0.7x the full width)
+        // so the label doesn't run past the outline.
+        const fitted = fitLabelText(label, width * 0.7 - 12);
         const text = newTextElement({
           x,
           y,
